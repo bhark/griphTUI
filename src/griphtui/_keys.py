@@ -25,14 +25,24 @@ def _read_key_posix(*, nav: bool = True) -> str:
                 return "up"
             if seq in ("[B", "OB"):
                 return "down"
+            if seq in ("[C", "OC"):
+                return "right"
+            if seq in ("[D", "OD"):
+                return "left"
             return "escape"
         if nav:
             if ch == " ":
                 return "space"
+            if ch == "\t":
+                return "tab"
             if ch == "j":
                 return "down"
             if ch == "k":
                 return "up"
+            if ch == "h":
+                return "left"
+            if ch == "l":
+                return "right"
         return ch
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
@@ -57,14 +67,24 @@ def _read_key_windows(*, nav: bool = True) -> str:
             return "up"
         if code == "P":
             return "down"
+        if code == "K":
+            return "left"
+        if code == "M":
+            return "right"
         return "escape"
     if nav:
         if ch == " ":
             return "space"
+        if ch == "\t":
+            return "tab"
         if ch == "j":
             return "down"
         if ch == "k":
             return "up"
+        if ch == "h":
+            return "left"
+        if ch == "l":
+            return "right"
     return ch
 
 

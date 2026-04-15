@@ -152,23 +152,49 @@ def password(
 
 def confirm(label: str, *, default: bool = True, console: Console | None = None) -> bool | Cancel:
     c = get_console(console)
-    hint = "Y/n" if default else "y/N"
-    _header(c, BULLET, label, hint)
+    _header(c, BULLET, label)
+    answer = default
+
+    def render() -> Group:
+        yes_glyph = RADIO_ON if answer else RADIO_OFF
+        no_glyph = RADIO_OFF if answer else RADIO_ON
+        yes_glyph_style = ACCENT if answer else "dim"
+        no_glyph_style = "dim" if answer else ACCENT
+        yes_text_style = "" if answer else "dim"
+        no_text_style = "dim" if answer else ""
+        line = Text(" ") + Text(BAR, style="dim") + Text("  ")
+        line += Text(yes_glyph, style=yes_glyph_style) + Text(" ")
+        line += Text("yes", style=yes_text_style)
+        line += Text("   ")
+        line += Text(no_glyph, style=no_glyph_style) + Text(" ")
+        line += Text("no", style=no_text_style)
+        return Group(
+            line,
+            Text(f" {BAR}", style="dim"),
+            Text(f" {BAR}  enter confirm", style="dim"),
+        )
+
     try:
-        while True:
-            key = read_key()
-            if key == "enter":
-                answer = default
-                break
-            if key in ("y", "Y"):
-                answer = True
-                break
-            if key in ("n", "N"):
-                answer = False
-                break
+        with Live(render(), console=c, transient=True, auto_refresh=False) as live:
+            while True:
+                key = read_key()
+                if key in ("left", "right", "up", "down", "tab"):
+                    answer = not answer
+                elif key in ("y", "Y"):
+                    answer = True
+                    break
+                elif key in ("n", "N"):
+                    answer = False
+                    break
+                elif key == "enter":
+                    break
+                live.update(render(), refresh=True)
     except KeyboardInterrupt:
         return _cancelled(c)
-    c.print(f" [dim]{BAR}  {'yes' if answer else 'no'}[/dim]")
+
+    c.print(
+        f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{'yes' if answer else 'no'}[/dim]"
+    )
     _spacer(c)
     return answer
 
