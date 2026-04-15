@@ -59,8 +59,10 @@ gtui.warn("Aristoteles disliked this") # info, step, success, warn or error
 Finally, wrap up with an outro:
 
 ```python
-gtui.outro("Thanks for playing")
+gtui.outro("That's all, folks!")
 ```
+
+There's a bit more available, eg. input validation. See the [example](/examples/tour.py) if you want to dive deeper.
 
 ## API
 

@@ -104,3 +104,85 @@ def test_multiselect_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_multiselect_empty_returns_empty() -> None:
     assert gui.multiselect("pick", []) == []
+
+
+def _raise_interrupt(**_: object) -> str:
+    raise KeyboardInterrupt
+
+
+def test_text_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+
+    def boom(_prompt: str = "") -> str:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(console, "input", boom)
+    result = gui.text("name", console=console)
+    assert gui.is_cancel(result)
+    assert result is gui.CANCEL
+
+
+def test_confirm_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    monkeypatch.setattr(prompts, "read_key", _raise_interrupt)
+    result = gui.confirm("go?", console=console)
+    assert gui.is_cancel(result)
+
+
+def test_select_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    monkeypatch.setattr(prompts, "read_key", _raise_interrupt)
+    result = gui.select("pick", [("A", "a"), ("B", "b")], console=console)
+    assert gui.is_cancel(result)
+
+
+def test_multiselect_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    monkeypatch.setattr(prompts, "read_key", _raise_interrupt)
+    result = gui.multiselect("pick", [("A", "a"), ("B", "b")], console=console)
+    assert gui.is_cancel(result)
+
+
+def test_password_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    monkeypatch.setattr(prompts, "read_key", _raise_interrupt)
+    result = gui.password("secret", console=console)
+    assert gui.is_cancel(result)
+
+
+def test_text_validate_rejects_then_accepts(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    inputs = iter(["ab", "abcd"])
+    monkeypatch.setattr(console, "input", lambda _prompt="": next(inputs))
+    result = gui.text(
+        "name",
+        validate=lambda s: "too short" if len(s) < 3 else None,
+        console=console,
+    )
+    assert result == "abcd"
+
+
+def test_text_validate_skipped_when_falling_back_to_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console, _ = make_console()
+    monkeypatch.setattr(console, "input", lambda _prompt="": "")
+    result = gui.text(
+        "name",
+        default="anon",
+        validate=lambda s: "nope" if s == "anon" else None,
+        console=console,
+    )
+    assert result == "anon"
+
+
+def test_password_validate_rejects_then_accepts(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["a", "enter", "a", "b", "c", "d", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    result = gui.password(
+        "pw",
+        validate=lambda s: "too short" if len(s) < 3 else None,
+        console=console,
+    )
+    assert result == "abcd"

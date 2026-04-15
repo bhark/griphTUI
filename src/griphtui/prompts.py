@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Final, Generic, TypeGuard, TypeVar
 
 from rich.console import Console, Group
 from rich.live import Live
@@ -14,6 +14,31 @@ from ._glyphs import ACCENT, BAR, BULLET, CHECK_OFF, CHECK_ON, DIAMOND, RADIO_OF
 from ._keys import read_key
 
 T = TypeVar("T")
+
+Validator = Callable[[str], str | None]
+
+
+class Cancel:
+    __slots__ = ()
+    _instance: Cancel | None = None
+
+    def __new__(cls) -> Cancel:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self) -> str:
+        return "Cancel"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+CANCEL: Final[Cancel] = Cancel()
+
+
+def is_cancel(value: object) -> TypeGuard[Cancel]:
+    return value is CANCEL
 
 
 @dataclass(frozen=True)
@@ -47,60 +72,108 @@ def _header(c: Console, glyph: str, label: str, hint: str = "") -> None:
     c.print(f" [{ACCENT}]{glyph}[/{ACCENT}]  {escape(label)}{suffix}")
 
 
-def text(label: str, *, default: str = "", console: Console | None = None) -> str:
+def _error_line(c: Console, message: str) -> None:
+    c.print(f" [red]{BAR}[/red]  [red]{escape(message)}[/red]")
+
+
+def _cancelled(c: Console) -> Cancel:
+    c.print(f" [dim]{BAR}[/dim]  [yellow]cancelled[/yellow]")
+    _spacer(c)
+    return CANCEL
+
+
+def text(
+    label: str,
+    *,
+    default: str = "",
+    validate: Validator | None = None,
+    console: Console | None = None,
+) -> str | Cancel:
     c = get_console(console)
     hint = escape(default) if default else ""
     _header(c, BULLET, label, hint)
-    try:
-        value = c.input(f" [dim]{BAR}[/dim]  ")
-    except EOFError:
-        value = ""
-    _spacer(c)
-    return value.strip() or default
+    while True:
+        try:
+            raw = c.input(f" [dim]{BAR}[/dim]  ")
+        except EOFError:
+            raw = ""
+        except KeyboardInterrupt:
+            return _cancelled(c)
+        stripped = raw.strip()
+        used_default = not stripped and bool(default)
+        candidate = default if used_default else stripped
+        if validate is not None and not used_default:
+            err = validate(candidate)
+            if err:
+                _error_line(c, err)
+                continue
+        _spacer(c)
+        return candidate
 
 
-def password(label: str, *, console: Console | None = None) -> str:
+def password(
+    label: str,
+    *,
+    validate: Validator | None = None,
+    console: Console | None = None,
+) -> str | Cancel:
     c = get_console(console)
     _header(c, DIAMOND, label)
     out = c.file
-    buf: list[str] = []
     # dim bar via raw ansi since we bypass rich for keystroke handling
-    out.write(f" \x1b[2m{BAR}\x1b[22m  ")
-    out.flush()
+    bar_prompt = f" \x1b[2m{BAR}\x1b[22m  "
     while True:
-        key = read_key(nav=False)
-        if key == "enter":
-            break
-        if key == "backspace":
-            if buf:
-                buf.pop()
-                out.write("\b \b")
-                out.flush()
-        elif len(key) == 1:
-            buf.append(key)
-            out.write("·")
+        buf: list[str] = []
+        out.write(bar_prompt)
+        out.flush()
+        try:
+            while True:
+                key = read_key(nav=False)
+                if key == "enter":
+                    break
+                if key == "backspace":
+                    if buf:
+                        buf.pop()
+                        out.write("\b \b")
+                        out.flush()
+                elif len(key) == 1:
+                    buf.append(key)
+                    out.write("·")
+                    out.flush()
+        except KeyboardInterrupt:
+            out.write("\n")
             out.flush()
-    out.write("\n")
-    out.flush()
-    _spacer(c)
-    return "".join(buf).strip()
+            return _cancelled(c)
+        out.write("\n")
+        out.flush()
+        candidate = "".join(buf).strip()
+        if validate is not None:
+            err = validate(candidate)
+            if err:
+                _error_line(c, err)
+                continue
+        _spacer(c)
+        return candidate
 
 
-def confirm(label: str, *, default: bool = True, console: Console | None = None) -> bool:
+def confirm(label: str, *, default: bool = True, console: Console | None = None) -> bool | Cancel:
     c = get_console(console)
     hint = "Y/n" if default else "y/N"
     _header(c, BULLET, label, hint)
-    while True:
-        key = read_key()
-        if key == "enter":
-            answer = default
-            break
-        if key in ("y", "Y"):
-            answer = True
-            break
-        if key in ("n", "N"):
-            answer = False
-            break
+    try:
+        while True:
+            key = read_key()
+            if key == "enter":
+                answer = default
+                break
+            if key in ("y", "Y"):
+                answer = True
+                break
+            if key in ("n", "N"):
+                answer = False
+                break
+    except KeyboardInterrupt:
+        return _cancelled(c)
     c.print(f" [dim]{BAR}  {'yes' if answer else 'no'}[/dim]")
     _spacer(c)
     return answer
@@ -111,7 +184,7 @@ def select(
     options: Sequence[SelectOption[T]],
     *,
     console: Console | None = None,
-) -> T:
+) -> T | Cancel:
     if not options:
         raise ValueError("select requires at least one option")
 
@@ -138,16 +211,19 @@ def select(
 
     _header(c, BULLET, label)
 
-    with Live(render(), console=c, transient=True, auto_refresh=False) as live:
-        while True:
-            key = read_key()
-            if key == "up":
-                cursor = (cursor - 1) % len(opts)
-            elif key == "down":
-                cursor = (cursor + 1) % len(opts)
-            elif key == "enter":
-                break
-            live.update(render(), refresh=True)
+    try:
+        with Live(render(), console=c, transient=True, auto_refresh=False) as live:
+            while True:
+                key = read_key()
+                if key == "up":
+                    cursor = (cursor - 1) % len(opts)
+                elif key == "down":
+                    cursor = (cursor + 1) % len(opts)
+                elif key == "enter":
+                    break
+                live.update(render(), refresh=True)
+    except KeyboardInterrupt:
+        return _cancelled(c)
 
     chosen = opts[cursor]
     c.print(f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{escape(chosen.label)}[/dim]")
@@ -160,7 +236,7 @@ def multiselect(
     options: Sequence[MultiOption[T]],
     *,
     console: Console | None = None,
-) -> list[T]:
+) -> list[T] | Cancel:
     if not options:
         return []
 
@@ -189,18 +265,21 @@ def multiselect(
 
     _header(c, BULLET, label, "space toggle, enter confirm")
 
-    with Live(render(), console=c, transient=True, auto_refresh=False) as live:
-        while True:
-            key = read_key()
-            if key == "up":
-                cursor = (cursor - 1) % len(opts)
-            elif key == "down":
-                cursor = (cursor + 1) % len(opts)
-            elif key == "space":
-                selected[cursor] = not selected[cursor]
-            elif key == "enter":
-                break
-            live.update(render(), refresh=True)
+    try:
+        with Live(render(), console=c, transient=True, auto_refresh=False) as live:
+            while True:
+                key = read_key()
+                if key == "up":
+                    cursor = (cursor - 1) % len(opts)
+                elif key == "down":
+                    cursor = (cursor + 1) % len(opts)
+                elif key == "space":
+                    selected[cursor] = not selected[cursor]
+                elif key == "enter":
+                    break
+                live.update(render(), refresh=True)
+    except KeyboardInterrupt:
+        return _cancelled(c)
 
     for i, opt in enumerate(opts):
         if selected[i]:
