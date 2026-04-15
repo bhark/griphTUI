@@ -1,6 +1,6 @@
 [project]
 name = "griphtui"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Clack-style terminal UI primitives for prompt-first Python TUIs."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -31,8 +31,14 @@ Issues = "https://github.com/bhark/griphTUI/issues"
 dev = ["pytest>=9.0", "pytest-asyncio>=1.3"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/griphtui/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/griphtui"]
