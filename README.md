@@ -8,37 +8,58 @@ Minimal and ergonomic Clack-style terminal UI primitives for Python CLIs/TUIs.
 uv add griphtui
 ```
 
-## Quickstart
+## The basics
+
+GriphTUI is heavily inspired by [Clack](https://github.com/bombshell-dev/clack/tree/main/packages/prompts), and follows many of the same basic principles.
+
+You'll probably want to begin with an intro:
 
 ```python
-import griphtui as gui
+import griphtui as gtui
 
-gui.intro("Bootstrapping Talos")
+gtui.intro("The grand survey")
+```
 
-gui.section("Configuration")
-name    = gui.text("Your name", default="Anonymous")
-token   = gui.password("API token")
-color   = gui.select("Favorite color", [("Red", "red"), ("Blue", "blue")])
-colors  = gui.multiselect("Pick colors", [
-    ("Red",   "red",   True),
-    ("Blue",  "blue",  False),
-    ("Green", "green", False),
-])
-go = gui.confirm("Continue?", default=True)
+...after which you can employ a range of primitives to prompt the user:
 
-gui.section("Working")
-with gui.spinner("Processing") as s:
-    do_some_work()
-    s.update("almost done")
-    do_more_work()
+```python
+# section header
+gtui.section("Let's talk about trains")
 
-gui.info("cached 42 items")
-gui.step("syncing to disk")
-gui.success("all good")
-gui.warn("slow disk detected")
-gui.error("could not reach host")
+# text input
+gtui.text("What's your favorite train?")
 
-gui.outro("Done")
+# select
+gtui.select(
+    "Can this train drift?",
+    [("Probably", "probably"), ("Definitely", "definitely")]
+)
+
+# multiselect
+gtui.select(
+    "Which of the following applies to your favorite train?",
+    [
+        ("I wish it could drift", "wish", True), # toggled on by default
+        ("I'm sad that it can't drift", "sadness", False)
+        ("It's really nice that it can drift", "happiness", False)
+    ]
+)
+
+# spinners
+with gtui.spinner("Preparing for ethical dilemmas...") as s:
+    time.sleep(1)
+    s.update("Installing drift capabilities...")
+    time.sleep(1)
+    s.update("Updating Terms of Use...")
+
+# status messages
+gtui.warn("Aristoteles disliked this") # info, step, success, warn or error
+```
+
+Finally, wrap up with an outro:
+
+```python
+gtui.outro("Thanks for playing")
 ```
 
 ## API
