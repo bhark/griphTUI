@@ -9,7 +9,8 @@ from ._glyphs import ACCENT, BAR, BOTTOM, BULLET, TOP
 
 def intro(title: str, *, console: Console | None = None) -> None:
     c = get_console(console)
-    c.print(f" [{ACCENT}]{TOP}[/{ACCENT}]  {escape(title)}")
+    c.print()
+    c.print(f" [{ACCENT}]{TOP}[/{ACCENT}]  [black on {ACCENT}] {escape(title)} [/]")
     c.print(f" [dim]{BAR}[/dim]")
 
 
@@ -17,6 +18,7 @@ def outro(message: str, *, console: Console | None = None) -> None:
     c = get_console(console)
     c.print(f" [dim]{BAR}[/dim]")
     c.print(f" [{ACCENT}]{BOTTOM}[/{ACCENT}]  {escape(message)}")
+    c.print()
 
 
 def section(title: str, *, console: Console | None = None) -> None:
