@@ -8,29 +8,40 @@ from rich.markup import escape
 from rich.text import Text
 
 from ._console import get_console
-from ._glyphs import BAR, BULLET, DIAMOND, OFF, ON, POINTER
+from ._glyphs import ACCENT, BAR, BULLET, CHECK_OFF, CHECK_ON, DIAMOND, RADIO_OFF, RADIO_ON
 from ._keys import read_key
 
 T = TypeVar("T")
 
 
+def _spacer(c: Console) -> None:
+    c.print(f" [dim]{BAR}[/dim]")
+
+
+def _header(c: Console, glyph: str, label: str, hint: str = "") -> None:
+    suffix = f"  [dim]({hint})[/dim]" if hint else ""
+    c.print(f" [{ACCENT}]{glyph}[/{ACCENT}]  {escape(label)}{suffix}")
+
+
 def text(label: str, default: str = "", *, console: Console | None = None) -> str:
     c = get_console(console)
-    hint = f" [dim]({escape(default)})[/dim]" if default else ""
-    c.print(f" [bold]{BULLET}  {escape(label)}[/bold]{hint}")
+    hint = escape(default) if default else ""
+    _header(c, BULLET, label, hint)
     try:
-        value = c.input(f" {BAR}  ")
+        value = c.input(f" [dim]{BAR}[/dim]  ")
     except EOFError:
         value = ""
+    _spacer(c)
     return value.strip() or default
 
 
 def password(label: str, *, console: Console | None = None) -> str:
     c = get_console(console)
-    c.print(f" [bold]{DIAMOND}  {escape(label)}[/bold]")
+    _header(c, DIAMOND, label)
     out = c.file
     buf: list[str] = []
-    out.write(f" {BAR}  ")
+    # dim bar via raw ansi since we bypass rich for keystroke handling
+    out.write(f" \x1b[2m{BAR}\x1b[22m  ")
     out.flush()
     while True:
         key = read_key(nav=False)
@@ -47,24 +58,28 @@ def password(label: str, *, console: Console | None = None) -> str:
             out.flush()
     out.write("\n")
     out.flush()
+    _spacer(c)
     return "".join(buf).strip()
 
 
 def confirm(label: str, default: bool = True, *, console: Console | None = None) -> bool:
     c = get_console(console)
     hint = "Y/n" if default else "y/N"
-    c.print(f" [bold]{BULLET}  {escape(label)}[/bold]  [dim]({hint})[/dim]")
+    _header(c, BULLET, label, hint)
     while True:
         key = read_key()
         if key == "enter":
-            c.print(f" {BAR}  {'yes' if default else 'no'}")
-            return default
+            answer = default
+            break
         if key in ("y", "Y"):
-            c.print(f" {BAR}  yes")
-            return True
+            answer = True
+            break
         if key in ("n", "N"):
-            c.print(f" {BAR}  no")
-            return False
+            answer = False
+            break
+    c.print(f" [dim]{BAR}  {'yes' if answer else 'no'}[/dim]")
+    _spacer(c)
+    return answer
 
 
 def select(
@@ -82,14 +97,19 @@ def select(
     def render() -> Group:
         items: list[Text] = []
         for i, (display, _) in enumerate(options):
-            pointer = POINTER if i == cursor else " "
-            style = "bold" if i == cursor else ""
-            items.append(Text(f" {BAR}  {pointer} {display}", style=style))
+            active = i == cursor
+            glyph = RADIO_ON if active else RADIO_OFF
+            glyph_style = ACCENT if active else "dim"
+            text_style = "" if active else "dim"
+            line = Text(" ") + Text(BAR, style="dim") + Text("  ")
+            line += Text(glyph, style=glyph_style) + Text(" ")
+            line += Text(display, style=text_style)
+            items.append(line)
         items.append(Text(f" {BAR}", style="dim"))
         items.append(Text(f" {BAR}  enter confirm", style="dim"))
         return Group(*items)
 
-    c.print(f" [bold]{BULLET}  {escape(label)}[/bold]")
+    _header(c, BULLET, label)
 
     with Live(render(), console=c, transient=True, auto_refresh=False) as live:
         while True:
@@ -103,7 +123,8 @@ def select(
             live.update(render(), refresh=True)
 
     display, value = options[cursor]
-    c.print(f" {BAR}  {display}")
+    c.print(f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{escape(display)}[/dim]")
+    _spacer(c)
     return value
 
 
@@ -123,15 +144,20 @@ def multiselect(
     def render() -> Group:
         items: list[Text] = []
         for i, (display, _, _) in enumerate(options):
-            pointer = POINTER if i == cursor else " "
-            glyph = ON if selected[i] else OFF
-            style = "bold" if i == cursor else ""
-            items.append(Text(f" {BAR}  {pointer} {glyph} {display}", style=style))
+            active = i == cursor
+            is_on = selected[i]
+            glyph = CHECK_ON if is_on else CHECK_OFF
+            glyph_style = ACCENT if is_on else "dim"
+            text_style = "" if active else "dim"
+            line = Text(" ") + Text(BAR, style="dim") + Text("  ")
+            line += Text(glyph, style=glyph_style) + Text(" ")
+            line += Text(display, style=text_style)
+            items.append(line)
         items.append(Text(f" {BAR}", style="dim"))
         items.append(Text(f" {BAR}  space toggle  enter confirm", style="dim"))
         return Group(*items)
 
-    c.print(f" [bold]{BULLET}  {escape(label)}[/bold]  [dim](space toggle, enter confirm)[/dim]")
+    _header(c, BULLET, label, "space toggle, enter confirm")
 
     with Live(render(), console=c, transient=True, auto_refresh=False) as live:
         while True:
@@ -147,7 +173,13 @@ def multiselect(
             live.update(render(), refresh=True)
 
     for i, (display, _, _) in enumerate(options):
-        glyph = ON if selected[i] else OFF
-        c.print(f" {BAR}  {glyph} {display}")
+        if selected[i]:
+            glyph_markup = f"[{ACCENT}]{CHECK_ON}[/{ACCENT}]"
+            text_markup = f"[dim]{escape(display)}[/dim]"
+        else:
+            glyph_markup = f"[dim]{CHECK_OFF}[/dim]"
+            text_markup = f"[dim]{escape(display)}[/dim]"
+        c.print(f" [dim]{BAR}[/dim]  {glyph_markup} {text_markup}")
+    _spacer(c)
 
     return [value for (_, value, _), sel in zip(options, selected) if sel]

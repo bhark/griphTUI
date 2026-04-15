@@ -8,45 +8,45 @@ import griphtui as gui
 
 
 def main() -> None:
-    gui.intro("griphtui tour")
+    gui.intro("GriphTUI")
 
-    gui.section("prompts")
-    name = gui.text("Your name", default="Anonymous")
-    token = gui.password("A secret")
-    proceed = gui.confirm("Continue the tour?", default=True)
+    gui.section("Scratching the surface")
+    name = gui.text("Who are you?", default="Anonymous")
+    token = gui.password("Tell me a secret")
+    proceed = gui.confirm("Wanna dive deeper?", default=True)
     if not proceed:
-        gui.outro("bye")
+        gui.outro("Bye!")
         return
 
-    color = gui.select(
-        "Pick a color",
-        [("Red", "red"), ("Green", "green"), ("Blue", "blue")],
+    direction = gui.select(
+        "You come to a cross in the road. Where to?",
+        [("My way", "my-way"), ("The highway", "the-highway"), ("The Queens way", "the-queens-way")],
     )
-    colors = gui.multiselect(
-        "Pick any flavors",
+    meanings = gui.multiselect(
+        "What is the meaning of life?",
         [
-            ("Vanilla", "vanilla", True),
-            ("Chocolate", "chocolate", False),
-            ("Strawberry", "strawberry", False),
+            ("Returning to the archaic", "archaic", True),
+            ("Forty-two", "forty-two", False),
+            ("Steam locomotives", "steam-locomotives", False),
         ],
     )
 
-    gui.section("spinner")
-    with gui.spinner("warming up") as s:
+    gui.section("All is movement")
+    with gui.spinner("Warming up...") as s:
         time.sleep(0.8)
-        s.update("cooking")
+        s.update("Deliberating...")
         time.sleep(0.8)
-        s.update("plating")
+        s.update("Pondering...")
         time.sleep(0.6)
 
-    gui.section("status")
-    gui.info(f"hello {name} (secret had {len(token)} chars)")
-    gui.step(f"picked {color}, plus {len(colors)} flavor(s)")
-    gui.success("everything works")
-    gui.warn("this is a warning")
-    gui.error("this is an error (not real)")
+    gui.section("That's a wrap")
+    gui.info(f"Hello {name}, with the well-kept {len(token)} chars secret)")
+    gui.step(f"You chose {direction}, and your life has {len(meanings)} meaning(s)")
+    gui.success("Looking good!")
+    gui.warn("Kind of shaky...")
+    gui.error("It's all gone wrong.")
 
-    gui.outro("done")
+    gui.outro("That's all, folks")
 
 
 if __name__ == "__main__":
