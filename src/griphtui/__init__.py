@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .layout import intro, outro, section
+from .layout import intro, note, outro, section
 from .prompts import CANCEL, Cancel, Option, confirm, is_cancel, multiselect, password, select, text
 from .spinner import Spinner, spinner
 from .status import error, info, step, success, warn
@@ -18,6 +18,7 @@ __all__ = [
     "intro",
     "is_cancel",
     "multiselect",
+    "note",
     "outro",
     "password",
     "section",

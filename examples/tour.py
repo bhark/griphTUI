@@ -57,6 +57,19 @@ def main() -> None:
         )
     )
 
+    gtui.note(
+        [
+            f"name:     {name}",
+            f"secret:   {'*' * len(token)}",
+            f"path:     {direction}",
+            f"meanings: {', '.join(meanings) or 'none'}",
+        ],
+        title="Your answers",
+    )
+    if not _bail(gtui.confirm("Does that look right?", default=True)):
+        gtui.outro("No worries, maybe next time")
+        return
+
     gtui.section("All is movement")
     with gtui.spinner("Warming up...") as s:
         time.sleep(0.8)

@@ -69,6 +69,7 @@ There's a bit more available, eg. input validation. See the [example](/examples/
 | Function | Purpose |
 | --- | --- |
 | `intro(title)` / `outro(msg)` / `section(title)` | frames |
+| `note(message, title=...)` | multi-line block (e.g. a confirmation summary) |
 | `text(label, default="")` | single-line input |
 | `password(label)` | masked input |
 | `confirm(label, default=True)` | y/n prompt |

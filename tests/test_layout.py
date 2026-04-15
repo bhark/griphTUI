@@ -28,3 +28,20 @@ def test_section_escapes_markup() -> None:
     console, buf = make_console()
     gui.section("step [2/5]", console=console)
     assert "step [2/5]" in buf.getvalue()
+
+
+def test_note_renders_lines_and_title() -> None:
+    console, buf = make_console()
+    gui.note(["name: ada", "role: [dev]"], title="summary [v1]", console=console)
+    out = buf.getvalue()
+    assert "summary [v1]" in out
+    assert "name: ada" in out
+    assert "role: [dev]" in out
+
+
+def test_note_accepts_multiline_string() -> None:
+    console, buf = make_console()
+    gui.note("line one\nline two", console=console)
+    out = buf.getvalue()
+    assert "line one" in out
+    assert "line two" in out

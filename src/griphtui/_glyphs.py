@@ -8,6 +8,7 @@ BAR = "│"
 # prompts
 BULLET = "●"
 DIAMOND = "⬥"
+NOTE = "◇"
 SKIP = "⊘"
 
 # selection - radio (single) and check (multi)
