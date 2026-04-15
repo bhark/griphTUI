@@ -4,9 +4,28 @@ version = "0.1.0"
 description = "Clack-style terminal UI primitives for prompt-first Python TUIs."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
-authors = [{ name = "KDS" }]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Adrian E. Bratlann", email = "adrian@forn.dk" }]
+keywords = ["tui", "cli", "prompt", "clack", "rich", "terminal", "interactive"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: Terminals",
+    "Typing :: Typed",
+]
 dependencies = ["rich>=15.0"]
+
+[project.urls]
+Homepage = "https://github.com/bhark/griphTUI"
+Repository = "https://github.com/bhark/griphTUI"
+Issues = "https://github.com/bhark/griphTUI/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=9.0", "pytest-asyncio>=1.3"]
