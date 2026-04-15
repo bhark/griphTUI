@@ -20,12 +20,6 @@ Validator = Callable[[str], str | None]
 
 class Cancel:
     __slots__ = ()
-    _instance: Cancel | None = None
-
-    def __new__(cls) -> Cancel:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
 
     def __repr__(self) -> str:
         return "Cancel"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from collections.abc import Iterator
+from typing import Never
 
 import pytest
 from rich.console import Console
@@ -106,20 +107,19 @@ def test_multiselect_empty_returns_empty() -> None:
     assert gui.multiselect("pick", []) == []
 
 
-def _raise_interrupt(**_: object) -> str:
+def _raise_interrupt(**_: object) -> Never:
     raise KeyboardInterrupt
 
 
 def test_text_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
     console, _ = make_console()
 
-    def boom(_prompt: str = "") -> str:
+    def boom(_prompt: str = "") -> Never:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(console, "input", boom)
     result = gui.text("name", console=console)
     assert gui.is_cancel(result)
-    assert result is gui.CANCEL
 
 
 def test_confirm_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:

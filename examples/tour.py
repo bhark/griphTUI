@@ -15,7 +15,7 @@ def _bail(value: R | gtui.Cancel) -> R:
     if gtui.is_cancel(value):
         gtui.outro("Cancelled by user")
         sys.exit(0)
-    return value  # type: ignore[return-value]
+    return value
 
 
 def main() -> None:
