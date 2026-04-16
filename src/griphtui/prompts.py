@@ -225,8 +225,8 @@ def _conflicting_indexes(
 
 def _multiselect_row_styles(*, active: bool, state: _OptionState) -> tuple[str, str]:
     if state.disabled:
-        glyph_style = f"{ACCENT} dim" if state.selected else "bright_black dim"
-        label_style = "bright_black" if active else "dim"
+        glyph_style = "yellow"
+        label_style = "" if active else "dim"
         return glyph_style, label_style
 
     glyph_style = ACCENT if state.selected else "dim"
