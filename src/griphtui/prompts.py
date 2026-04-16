@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from typing import Final, Generic, TypeGuard, TypeVar
 
@@ -41,6 +41,8 @@ class Option(Generic[T]):
     value: T
     selected: bool = False
     hint: str | None = None
+    requires: Collection[T] = ()
+    excludes: Collection[T] = ()
 
 
 SelectOption = Option[T] | tuple[str, T]
@@ -74,6 +76,198 @@ def _cancelled(c: Console) -> Cancel:
     c.print(f" [dim]{BAR}[/dim]  [yellow]cancelled[/yellow]")
     _spacer(c)
     return CANCEL
+
+
+@dataclass(frozen=True)
+class _RuleOption(Generic[T]):
+    option: Option[T]
+    requires: tuple[int, ...]
+    excludes: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class _OptionState:
+    selected: bool
+    disabled: bool
+    reason: str | None = None
+
+
+def _has_rules(opts: Sequence[Option[T]]) -> bool:
+    return any(opt.requires or opt.excludes for opt in opts)
+
+
+def _validate_rule_option_values(opts: Sequence[Option[T]]) -> None:
+    if not _has_rules(opts):
+        return
+
+    for i, opt in enumerate(opts):
+        for other in opts[i + 1 :]:
+            if opt.value == other.value:
+                raise ValueError("multiselect options using requires/excludes must have unique values")
+
+
+def _find_option_index(opts: Sequence[Option[T]], value: T) -> int:
+    for i, opt in enumerate(opts):
+        if opt.value == value:
+            return i
+    raise ValueError(f"multiselect dependency references unknown value: {value!r}")
+
+
+def _normalize_rule_refs(
+    refs: Collection[T],
+    *,
+    opts: Sequence[Option[T]],
+    current_index: int,
+    field_name: str,
+) -> tuple[int, ...]:
+    if isinstance(refs, (str, bytes)):
+        raise ValueError(
+            f"multiselect {field_name}s must be collections of option values; wrap single strings in a tuple, list, or set"
+        )
+    resolved: list[int] = []
+    for ref in refs:
+        ref_index = _find_option_index(opts, ref)
+        if ref_index == current_index:
+            raise ValueError(f"multiselect option cannot {field_name} itself")
+        if ref_index not in resolved:
+            resolved.append(ref_index)
+    return tuple(resolved)
+
+
+def _normalize_multiselect_options(options: Sequence[MultiOption[T]]) -> list[_RuleOption[T]]:
+    opts = [_to_option(o) for o in options]
+    _validate_rule_option_values(opts)
+
+    normalized: list[_RuleOption[T]] = []
+    for i, opt in enumerate(opts):
+        normalized.append(
+            _RuleOption(
+                option=opt,
+                requires=_normalize_rule_refs(opt.requires, opts=opts, current_index=i, field_name="require")
+                if opt.requires
+                else (),
+                excludes=_normalize_rule_refs(opt.excludes, opts=opts, current_index=i, field_name="exclude")
+                if opt.excludes
+                else (),
+            )
+        )
+    return normalized
+
+
+def _format_rule_reason(prefix: str, labels: Sequence[str]) -> str:
+    return f"{prefix} {', '.join(labels)}"
+
+
+def _labels_for_indexes(opts: Sequence[_RuleOption[T]], indexes: Sequence[int]) -> list[str]:
+    return [opts[i].option.label for i in indexes]
+
+
+def _required_by_indexes(
+    opts: Sequence[_RuleOption[T]],
+    selected: Sequence[bool],
+    index: int,
+) -> list[int]:
+    return [i for i, opt in enumerate(opts) if i != index and selected[i] and index in opt.requires]
+
+
+def _missing_requirement_indexes(
+    opt: _RuleOption[T],
+    selected: Sequence[bool],
+) -> list[int]:
+    return [i for i in opt.requires if not selected[i]]
+
+
+def _conflicting_indexes(
+    opts: Sequence[_RuleOption[T]],
+    selected: Sequence[bool],
+    index: int,
+) -> list[int]:
+    conflicts = [i for i in opts[index].excludes if selected[i]]
+    conflicts.extend(
+        i
+        for i, opt in enumerate(opts)
+        if i != index and selected[i] and index in opt.excludes and i not in conflicts
+    )
+    return conflicts
+
+
+def _multiselect_row_styles(*, active: bool, state: _OptionState) -> tuple[str, str]:
+    if state.disabled:
+        glyph_style = f"{ACCENT} dim" if state.selected else "bright_black dim"
+        label_style = "bright_black" if active else "dim"
+        return glyph_style, label_style
+
+    glyph_style = ACCENT if state.selected else "dim"
+    label_style = "" if active else "dim"
+    return glyph_style, label_style
+
+
+def _multiselect_row_suffix(*, active: bool, state: _OptionState, hint: str | None) -> str | None:
+    if active and state.reason:
+        return state.reason
+    return hint
+
+
+def _resolve_multiselect_states(
+    opts: Sequence[_RuleOption[T]],
+    selected: Sequence[bool],
+) -> list[_OptionState]:
+    states: list[_OptionState] = []
+
+    for i, opt in enumerate(opts):
+        if selected[i]:
+            required_by = _labels_for_indexes(opts, _required_by_indexes(opts, selected, i))
+            if required_by:
+                states.append(
+                    _OptionState(
+                        selected=True,
+                        disabled=True,
+                        reason=_format_rule_reason("Required by", required_by),
+                    )
+                )
+                continue
+
+            states.append(_OptionState(selected=True, disabled=False))
+            continue
+
+        missing_requires = _labels_for_indexes(opts, _missing_requirement_indexes(opt, selected))
+        if missing_requires:
+            states.append(
+                _OptionState(
+                    selected=False,
+                    disabled=True,
+                    reason=_format_rule_reason("Depends on", missing_requires),
+                )
+            )
+            continue
+
+        conflicts = _labels_for_indexes(opts, _conflicting_indexes(opts, selected, i))
+        if conflicts:
+            states.append(
+                _OptionState(
+                    selected=False,
+                    disabled=True,
+                    reason=_format_rule_reason("Conflicts with", conflicts),
+                )
+            )
+            continue
+
+        states.append(_OptionState(selected=False, disabled=False))
+
+    return states
+
+
+def _validate_multiselect_initial_state(
+    opts: Sequence[_RuleOption[T]],
+    selected: Sequence[bool],
+) -> None:
+    for i, opt in enumerate(opts):
+        if not selected[i]:
+            continue
+        if _missing_requirement_indexes(opt, selected):
+            raise ValueError(f"multiselect option {opt.option.label!r} starts without its requirements selected")
+        if _conflicting_indexes(opts, selected, i):
+            raise ValueError(f"multiselect option {opt.option.label!r} starts with a conflicting selection")
 
 
 def text(
@@ -260,24 +454,28 @@ def multiselect(
     if not options:
         return []
 
-    opts = [_to_option(o) for o in options]
+    opts = _normalize_multiselect_options(options)
     c = get_console(console)
-    selected = [o.selected for o in opts]
+    selected = [opt.option.selected for opt in opts]
+    _validate_multiselect_initial_state(opts, selected)
     cursor = 0
 
     def render() -> Group:
+        states = _resolve_multiselect_states(opts, selected)
         items: list[Text] = []
         for i, opt in enumerate(opts):
+            state = states[i]
             active = i == cursor
-            is_on = selected[i]
+            is_on = state.selected
             glyph = CHECK_ON if is_on else CHECK_OFF
-            glyph_style = ACCENT if is_on else "dim"
-            text_style = "" if active else "dim"
+            glyph_style, text_style = _multiselect_row_styles(active=active, state=state)
             line = Text(" ") + Text(BAR, style="dim") + Text("  ")
             line += Text(glyph, style=glyph_style) + Text(" ")
-            line += Text(opt.label, style=text_style)
-            if opt.hint:
-                line += Text(f"  {opt.hint}", style="dim")
+            line += Text(opt.option.label, style=text_style)
+
+            suffix = _multiselect_row_suffix(active=active, state=state, hint=opt.option.hint)
+            if suffix:
+                line += Text(f"  {suffix}", style="dim")
             items.append(line)
         items.append(Text(f" {BAR}", style="dim"))
         items.append(Text(f" {BAR}  space toggle  enter confirm", style="dim"))
@@ -294,7 +492,9 @@ def multiselect(
                 elif key == "down":
                     cursor = (cursor + 1) % len(opts)
                 elif key == "space":
-                    selected[cursor] = not selected[cursor]
+                    states = _resolve_multiselect_states(opts, selected)
+                    if not states[cursor].disabled:
+                        selected[cursor] = not selected[cursor]
                 elif key == "enter":
                     break
                 live.update(render(), refresh=True)
@@ -306,7 +506,7 @@ def multiselect(
             glyph_markup = f"[{ACCENT}]{CHECK_ON}[/{ACCENT}]"
         else:
             glyph_markup = f"[dim]{CHECK_OFF}[/dim]"
-        c.print(f" [dim]{BAR}[/dim]  {glyph_markup} [dim]{escape(opt.label)}[/dim]")
+        c.print(f" [dim]{BAR}[/dim]  {glyph_markup} [dim]{escape(opt.option.label)}[/dim]")
     _spacer(c)
 
-    return [opt.value for opt, sel in zip(opts, selected) if sel]
+    return [opt.option.value for opt, sel in zip(opts, selected) if sel]

@@ -39,12 +39,22 @@ gtui.select(
 )
 
 # multiselect
-gtui.select(
+gtui.multiselect(
     "Which of the following applies to your favorite train?",
     [
         ("I wish it could drift", "wish", True), # toggled on by default
-        ("I'm sad that it can't drift", "sadness", False)
+        ("I'm sad that it can't drift", "sadness", False),
         ("It's really nice that it can drift", "happiness", False)
+    ]
+)
+
+# multiselect with rules
+gtui.multiselect(
+    "Pick your stack",
+    [
+        gtui.Option("Core", "core"),
+        gtui.Option("Analytics", "analytics", requires={"core"}),
+        gtui.Option("Legacy mode", "legacy", excludes={"core"}),
     ]
 )
 
@@ -77,11 +87,13 @@ There's a bit more available, eg. input validation. See the [example](/examples/
 | `password(label)` | masked input |
 | `confirm(label, default=True)` | y/n prompt |
 | `select(label, options)` | single-choice picker |
-| `multiselect(label, options)` | multi-choice picker |
+| `multiselect(label, options)` | multi-choice picker with optional `requires` / `excludes` rules |
 | `spinner(label)` | threaded spinner context manager |
 | `info` / `step` / `success` / `warn` / `error` | prefixed status lines |
 
 All prompts accept an optional `console=` kwarg if you want to inject your own Rich `Console`.
+
+When `multiselect()` rules are used, referenced option values must be unique.
 
 ## Platforms
 

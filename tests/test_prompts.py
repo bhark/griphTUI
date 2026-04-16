@@ -103,8 +103,193 @@ def test_multiselect_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
     assert selected == ["a", "b"]
 
 
+def test_multiselect_requires_blocks_until_dependency_selected(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["down", "space", "up", "space", "down", "space", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    selected = gui.multiselect(
+        "pick",
+        [
+            gui.Option("A", "a"),
+            gui.Option("B", "b", requires={"a"}),
+        ],
+        console=console,
+    )
+    assert selected == ["a", "b"]
+
+
+def test_multiselect_excludes_blocks_conflicting_option(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["space", "down", "space", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    selected = gui.multiselect(
+        "pick",
+        [
+            gui.Option("A", "a"),
+            gui.Option("B", "b", excludes={"a"}),
+        ],
+        console=console,
+    )
+    assert selected == ["a"]
+
+
+def test_multiselect_required_selection_cannot_be_deselected(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["space", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    selected = gui.multiselect(
+        "pick",
+        [
+            gui.Option("A", "a", selected=True),
+            gui.Option("B", "b", selected=True, requires={"a"}),
+        ],
+        console=console,
+    )
+    assert selected == ["a", "b"]
+
+
 def test_multiselect_empty_returns_empty() -> None:
     assert gui.multiselect("pick", []) == []
+
+
+def test_multiselect_resolves_dependency_reasons() -> None:
+    opts = prompts._normalize_multiselect_options(
+        [
+            gui.Option("Core", "core"),
+            gui.Option("Analytics", "analytics", requires={"core"}),
+            gui.Option("Legacy", "legacy", excludes={"core"}),
+        ]
+    )
+
+    states = prompts._resolve_multiselect_states(opts, [False, False, False])
+    assert states[1].reason == "Depends on Core"
+
+    states = prompts._resolve_multiselect_states(opts, [True, False, False])
+    assert states[0].selected is True
+    assert states[2].reason == "Conflicts with Core"
+
+
+def test_multiselect_selected_requirement_reports_required_by() -> None:
+    opts = prompts._normalize_multiselect_options(
+        [
+            gui.Option("Core", "core"),
+            gui.Option("Analytics", "analytics", requires={"core"}),
+        ]
+    )
+
+    states = prompts._resolve_multiselect_states(opts, [True, True])
+    assert states[0].disabled is True
+    assert states[0].reason == "Required by Analytics"
+
+
+def test_multiselect_excludes_disable_reverse_direction() -> None:
+    opts = prompts._normalize_multiselect_options(
+        [
+            gui.Option("Core", "core"),
+            gui.Option("Legacy", "legacy", excludes={"core"}),
+        ]
+    )
+
+    states = prompts._resolve_multiselect_states(opts, [False, True])
+    assert states[0].disabled is True
+    assert states[0].reason == "Conflicts with Legacy"
+
+
+def test_multiselect_row_styles_keep_active_disabled_rows_highlighted() -> None:
+    glyph_style, label_style = prompts._multiselect_row_styles(
+        active=True,
+        state=prompts._OptionState(selected=False, disabled=True, reason="Depends on Core"),
+    )
+
+    assert glyph_style == "bright_black dim"
+    assert label_style == "bright_black"
+
+
+def test_multiselect_row_styles_fade_disabled_selected_glyph() -> None:
+    glyph_style, label_style = prompts._multiselect_row_styles(
+        active=False,
+        state=prompts._OptionState(selected=True, disabled=True, reason="Required by Analytics"),
+    )
+
+    assert glyph_style == "cyan dim"
+    assert label_style == "dim"
+
+
+def test_multiselect_row_suffix_shows_reason_only_when_active() -> None:
+    suffix = prompts._multiselect_row_suffix(
+        active=True,
+        state=prompts._OptionState(selected=False, disabled=True, reason="Depends on Core"),
+        hint="static hint",
+    )
+    assert suffix == "Depends on Core"
+
+    suffix = prompts._multiselect_row_suffix(
+        active=False,
+        state=prompts._OptionState(selected=False, disabled=True, reason="Depends on Core"),
+        hint="static hint",
+    )
+    assert suffix == "static hint"
+
+
+def test_multiselect_row_suffix_uses_hint_when_no_reason() -> None:
+    suffix = prompts._multiselect_row_suffix(
+        active=True,
+        state=prompts._OptionState(selected=False, disabled=False),
+        hint="static hint",
+    )
+    assert suffix == "static hint"
+
+
+def test_multiselect_unknown_dependency_raises() -> None:
+    with pytest.raises(ValueError, match="unknown value"):
+        prompts._normalize_multiselect_options(
+            [
+                gui.Option("A", "a"),
+                gui.Option("B", "b", requires={"missing"}),
+            ]
+        )
+
+
+def test_multiselect_duplicate_values_with_rules_raise() -> None:
+    with pytest.raises(ValueError, match="unique values"):
+        prompts._normalize_multiselect_options(
+            [
+                gui.Option("A", "a"),
+                gui.Option("B", "a", excludes={"a"}),
+            ]
+        )
+
+
+def test_multiselect_invalid_preselected_conflict_raises() -> None:
+    with pytest.raises(ValueError, match="conflicting selection"):
+        gui.multiselect(
+            "pick",
+            [
+                gui.Option("A", "a", selected=True),
+                gui.Option("B", "b", selected=True, excludes={"a"}),
+            ],
+        )
+
+
+def test_multiselect_invalid_preselected_missing_requirement_raises() -> None:
+    with pytest.raises(ValueError, match="without its requirements"):
+        gui.multiselect(
+            "pick",
+            [
+                gui.Option("A", "a"),
+                gui.Option("B", "b", selected=True, requires={"a"}),
+            ],
+        )
+
+
+def test_multiselect_string_rule_values_must_be_wrapped() -> None:
+    with pytest.raises(ValueError, match="wrap single strings"):
+        prompts._normalize_multiselect_options(
+            [
+                gui.Option("A", "a"),
+                gui.Option("B", "b", requires="a"),
+            ]
+        )
 
 
 def _raise_interrupt(**_: object) -> Never:

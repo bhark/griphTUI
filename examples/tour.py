@@ -56,6 +56,16 @@ def main() -> None:
             ],
         )
     )
+    stack = _bail(
+        gtui.multiselect(
+            "How should this ship?",
+            [
+                gtui.Option("Core", "core"),
+                gtui.Option("Analytics", "analytics", requires={"core"}),
+                gtui.Option("Legacy mode", "legacy", excludes={"core"}),
+            ],
+        )
+    )
 
     gtui.note(
         [
@@ -63,6 +73,7 @@ def main() -> None:
             f"secret:   {'*' * len(token)}",
             f"path:     {direction}",
             f"meanings: {', '.join(meanings) or 'none'}",
+            f"stack:    {', '.join(stack) or 'none'}",
         ],
         title="Your answers",
     )
