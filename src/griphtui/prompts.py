@@ -78,6 +78,38 @@ def _cancelled(c: Console) -> Cancel:
     return CANCEL
 
 
+def _read_inline_value(c: Console, *, masked: bool = False) -> str | Cancel:
+    out = c.file
+    # dim bar via raw ansi since we bypass rich for keystroke handling
+    bar_prompt = f" \x1b[2m{BAR}\x1b[22m  "
+    chars: list[str] = []
+    out.write(bar_prompt)
+    out.flush()
+    try:
+        while True:
+            key = read_key(nav=False)
+            if key == "enter":
+                break
+            if key == "backspace":
+                if chars:
+                    chars.pop()
+                    out.write("\b \b")
+                    out.flush()
+                continue
+            if len(key) == 1:
+                chars.append(key)
+                out.write("·" if masked else key)
+                out.flush()
+    except KeyboardInterrupt:
+        out.write("\n")
+        out.flush()
+        return _cancelled(c)
+
+    out.write("\n")
+    out.flush()
+    return "".join(chars)
+
+
 @dataclass(frozen=True)
 class _RuleOption(Generic[T]):
     option: Option[T]
@@ -281,12 +313,9 @@ def text(
     hint = escape(default) if default else ""
     _header(c, BULLET, label, hint)
     while True:
-        try:
-            raw = c.input(f" [dim]{BAR}[/dim]  ")
-        except EOFError:
-            raw = ""
-        except KeyboardInterrupt:
-            return _cancelled(c)
+        raw = _read_inline_value(c)
+        if is_cancel(raw):
+            return raw
         stripped = raw.strip()
         used_default = not stripped and bool(default)
         candidate = default if used_default else stripped
@@ -307,34 +336,11 @@ def password(
 ) -> str | Cancel:
     c = get_console(console)
     _header(c, DIAMOND, label)
-    out = c.file
-    # dim bar via raw ansi since we bypass rich for keystroke handling
-    bar_prompt = f" \x1b[2m{BAR}\x1b[22m  "
     while True:
-        buf: list[str] = []
-        out.write(bar_prompt)
-        out.flush()
-        try:
-            while True:
-                key = read_key(nav=False)
-                if key == "enter":
-                    break
-                if key == "backspace":
-                    if buf:
-                        buf.pop()
-                        out.write("\b \b")
-                        out.flush()
-                elif len(key) == 1:
-                    buf.append(key)
-                    out.write("·")
-                    out.flush()
-        except KeyboardInterrupt:
-            out.write("\n")
-            out.flush()
-            return _cancelled(c)
-        out.write("\n")
-        out.flush()
-        candidate = "".join(buf).strip()
+        raw = _read_inline_value(c, masked=True)
+        if is_cancel(raw):
+            return raw
+        candidate = raw.strip()
         if validate is not None:
             err = validate(candidate)
             if err:

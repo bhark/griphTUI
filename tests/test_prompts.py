@@ -23,13 +23,15 @@ def fake_keys(seq: list[str]) -> Iterator[str]:
 
 def test_text_returns_input(monkeypatch: pytest.MonkeyPatch) -> None:
     console, _ = make_console()
-    monkeypatch.setattr(console, "input", lambda _prompt="": "hello")
+    keys = iter(["h", "e", "l", "l", "o", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
     assert gui.text("name", console=console) == "hello"
 
 
 def test_text_uses_default_when_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     console, _ = make_console()
-    monkeypatch.setattr(console, "input", lambda _prompt="": "")
+    keys = iter(["enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
     assert gui.text("name", default="anon", console=console) == "anon"
 
 
@@ -298,11 +300,22 @@ def _raise_interrupt(**_: object) -> Never:
 
 def test_text_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
     console, _ = make_console()
+    monkeypatch.setattr(prompts, "read_key", _raise_interrupt)
+    result = gui.text("name", console=console)
+    assert gui.is_cancel(result)
 
-    def boom(_prompt: str = "") -> Never:
-        raise KeyboardInterrupt
 
-    monkeypatch.setattr(console, "input", boom)
+def test_text_cancel_after_partial_input_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["a", "b", "c"])
+
+    def read_key(**_: object) -> str:
+        try:
+            return next(keys)
+        except StopIteration as exc:
+            raise KeyboardInterrupt from exc
+
+    monkeypatch.setattr(prompts, "read_key", read_key)
     result = gui.text("name", console=console)
     assert gui.is_cancel(result)
 
@@ -337,8 +350,8 @@ def test_password_cancel_returns_sentinel(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_text_validate_rejects_then_accepts(monkeypatch: pytest.MonkeyPatch) -> None:
     console, _ = make_console()
-    inputs = iter(["ab", "abcd"])
-    monkeypatch.setattr(console, "input", lambda _prompt="": next(inputs))
+    keys = iter(["a", "b", "enter", "a", "b", "c", "d", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
     result = gui.text(
         "name",
         validate=lambda s: "too short" if len(s) < 3 else None,
@@ -351,7 +364,8 @@ def test_text_validate_skipped_when_falling_back_to_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     console, _ = make_console()
-    monkeypatch.setattr(console, "input", lambda _prompt="": "")
+    keys = iter(["enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
     result = gui.text(
         "name",
         default="anon",
