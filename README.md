@@ -1,6 +1,9 @@
-# griphtui
+# griphTUI
 
 Minimal and ergonomic Clack-style terminal UI primitives for Python CLIs/TUIs.
+
+![PyPI - Version](https://img.shields.io/pypi/v/griphtui) ![PyPI - Downloads](https://img.shields.io/pypi/dm/griphtui)
+
 
 ## Install
 
