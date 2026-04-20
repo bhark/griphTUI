@@ -294,6 +294,73 @@ def test_multiselect_string_rule_values_must_be_wrapped() -> None:
         )
 
 
+def test_select_skips_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["down", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    value = gui.select(
+        "pick",
+        [
+            gui.Option("A", "a"),
+            gui.Option("B", "b", disabled=True),
+            gui.Option("C", "c"),
+        ],
+        console=console,
+    )
+    assert value == "c"
+
+
+def test_select_initial_cursor_skips_leading_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    keys = iter(["enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    value = gui.select(
+        "pick",
+        [
+            gui.Option("A", "a", disabled=True),
+            gui.Option("B", "b"),
+            gui.Option("C", "c"),
+        ],
+        console=console,
+    )
+    assert value == "b"
+
+
+def test_select_all_disabled_raises() -> None:
+    with pytest.raises(ValueError):
+        gui.select(
+            "pick",
+            [gui.Option("A", "a", disabled=True), gui.Option("B", "b", disabled=True)],
+        )
+
+
+def test_multiselect_space_on_disabled_is_noop(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, _ = make_console()
+    # cursor lands on A (enabled); navigating down would skip B (disabled) to C
+    keys = iter(["down", "space", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    selected = gui.multiselect(
+        "pick",
+        [
+            gui.Option("A", "a"),
+            gui.Option("B", "b", disabled=True),
+            gui.Option("C", "c"),
+        ],
+        console=console,
+    )
+    assert selected == ["c"]
+
+
+def test_multiselect_all_disabled_returns_empty() -> None:
+    assert (
+        gui.multiselect(
+            "pick",
+            [gui.Option("A", "a", disabled=True)],
+        )
+        == []
+    )
+
+
 def _raise_interrupt(**_: object) -> Never:
     raise KeyboardInterrupt
 

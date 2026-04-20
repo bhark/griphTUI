@@ -10,7 +10,7 @@ from rich.markup import escape
 from rich.text import Text
 
 from ._console import get_console
-from ._glyphs import ACCENT, BAR, BULLET, CHECK_OFF, CHECK_ON, DIAMOND, RADIO_OFF, RADIO_ON
+from ._glyphs import ACCENT, BAR, BULLET, CHECK_OFF, CHECK_ON, DIAMOND, RADIO_OFF, RADIO_ON, SKIP
 from ._keys import read_key
 
 T = TypeVar("T")
@@ -41,8 +41,23 @@ class Option(Generic[T]):
     value: T
     selected: bool = False
     hint: str | None = None
+    disabled: bool = False
     requires: Collection[T] = ()
     excludes: Collection[T] = ()
+
+
+def _step_cursor(
+    cursor: int,
+    count: int,
+    is_skippable: Callable[[int], bool],
+    delta: int,
+) -> int:
+    # skips options matching the predicate, wraps around; caller must ensure at least one is not skippable
+    for _ in range(count):
+        cursor = (cursor + delta) % count
+        if not is_skippable(cursor):
+            return cursor
+    return cursor
 
 
 SelectOption = Option[T] | tuple[str, T]
@@ -248,6 +263,10 @@ def _resolve_multiselect_states(
     states: list[_OptionState] = []
 
     for i, opt in enumerate(opts):
+        if opt.option.disabled:
+            states.append(_OptionState(selected=selected[i], disabled=True))
+            continue
+
         if selected[i]:
             required_by = _labels_for_indexes(opts, _required_by_indexes(opts, selected, i))
             if required_by:
@@ -411,16 +430,21 @@ def select(
         raise ValueError("select requires at least one option")
 
     opts = [_to_option(o) for o in options]
+    if all(o.disabled for o in opts):
+        raise ValueError("select requires at least one enabled option")
     c = get_console(console)
-    cursor = 0
+    cursor = next(i for i, o in enumerate(opts) if not o.disabled)
 
     def render() -> Group:
         items: list[Text] = []
         for i, opt in enumerate(opts):
             active = i == cursor
-            glyph = RADIO_ON if active else RADIO_OFF
-            glyph_style = ACCENT if active else "dim"
-            text_style = "" if active else "dim"
+            if opt.disabled:
+                glyph, glyph_style, text_style = SKIP, "dim", "dim"
+            else:
+                glyph = RADIO_ON if active else RADIO_OFF
+                glyph_style = ACCENT if active else "dim"
+                text_style = "" if active else "dim"
             line = Text(" ") + Text(BAR, style="dim") + Text("  ")
             line += Text(glyph, style=glyph_style) + Text(" ")
             line += Text(opt.label, style=text_style)
@@ -438,9 +462,9 @@ def select(
             while True:
                 key = read_key()
                 if key == "up":
-                    cursor = (cursor - 1) % len(opts)
+                    cursor = _step_cursor(cursor, len(opts), lambda i: opts[i].disabled, -1)
                 elif key == "down":
-                    cursor = (cursor + 1) % len(opts)
+                    cursor = _step_cursor(cursor, len(opts), lambda i: opts[i].disabled, 1)
                 elif key == "enter":
                     break
                 live.update(render(), refresh=True)
@@ -463,10 +487,12 @@ def multiselect(
         return []
 
     opts = _normalize_multiselect_options(options)
+    if all(opt.option.disabled for opt in opts):
+        return []
     c = get_console(console)
     selected = [opt.option.selected for opt in opts]
     _validate_multiselect_initial_state(opts, selected)
-    cursor = 0
+    cursor = next(i for i, opt in enumerate(opts) if not opt.option.disabled)
 
     def render() -> Group:
         states = _resolve_multiselect_states(opts, selected)
@@ -496,9 +522,9 @@ def multiselect(
             while True:
                 key = read_key()
                 if key == "up":
-                    cursor = (cursor - 1) % len(opts)
+                    cursor = _step_cursor(cursor, len(opts), lambda i: opts[i].option.disabled, -1)
                 elif key == "down":
-                    cursor = (cursor + 1) % len(opts)
+                    cursor = _step_cursor(cursor, len(opts), lambda i: opts[i].option.disabled, 1)
                 elif key == "space":
                     states = _resolve_multiselect_states(opts, selected)
                     if not states[cursor].disabled:

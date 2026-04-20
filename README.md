@@ -89,9 +89,9 @@ There's a bit more available, eg. input validation. See the [example](/examples/
 | `text(label, default="")` | single-line input |
 | `password(label, mask="·")` | masked input; `mask=""` hides length entirely |
 | `confirm(label, default=True)` | y/n prompt |
-| `select(label, options)` | single-choice picker |
-| `multiselect(label, options)` | multi-choice picker with optional `requires` / `excludes` rules |
-| `spinner(label)` | threaded spinner context manager |
+| `select(label, options)` | single-choice picker; `Option(..., disabled=True)` skips navigation |
+| `multiselect(label, options)` | multi-choice picker with optional `requires` / `excludes` rules; `Option(..., disabled=True)` is un-toggleable |
+| `spinner(label)` | threaded spinner context manager; `.done()` / `.fail()` leave a final status line |
 | `info` / `step` / `success` / `warn` / `error` | prefixed status lines |
 
 All prompts accept an optional `console=` kwarg if you want to inject your own Rich `Console`.
