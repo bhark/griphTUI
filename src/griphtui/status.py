@@ -4,24 +4,28 @@ from rich.console import Console
 from rich.markup import escape
 
 from ._console import get_console
-from ._glyphs import PREFIX_ERROR, PREFIX_INFO, PREFIX_STEP, PREFIX_SUCCESS, PREFIX_WARN
+from ._glyphs import BAR, PREFIX_ERROR, PREFIX_INFO, PREFIX_STEP, PREFIX_SUCCESS, PREFIX_WARN
+
+
+def _line(c: Console, color: str, prefix: str, message: str) -> None:
+    c.print(f" [dim]{BAR}[/dim]  [{color}]{escape(prefix)}[/{color}] {escape(message)}")
 
 
 def info(message: str, *, console: Console | None = None) -> None:
-    get_console(console).print(f"[dim]{escape(PREFIX_INFO)}[/dim] {escape(message)}")
+    _line(get_console(console), "dim", PREFIX_INFO, message)
 
 
 def step(message: str, *, console: Console | None = None) -> None:
-    get_console(console).print(f"[cyan]{escape(PREFIX_STEP)}[/cyan] {escape(message)}")
+    _line(get_console(console), "cyan", PREFIX_STEP, message)
 
 
 def success(message: str, *, console: Console | None = None) -> None:
-    get_console(console).print(f"[green]{escape(PREFIX_SUCCESS)}[/green] {escape(message)}")
+    _line(get_console(console), "green", PREFIX_SUCCESS, message)
 
 
 def warn(message: str, *, console: Console | None = None) -> None:
-    get_console(console).print(f"[yellow]{escape(PREFIX_WARN)}[/yellow] {escape(message)}")
+    _line(get_console(console), "yellow", PREFIX_WARN, message)
 
 
 def error(message: str, *, console: Console | None = None) -> None:
-    get_console(console).print(f"[red]{escape(PREFIX_ERROR)}[/red] {escape(message)}")
+    _line(get_console(console), "red", PREFIX_ERROR, message)

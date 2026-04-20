@@ -46,3 +46,16 @@ def test_message_with_brackets_is_not_interpreted_as_markup() -> None:
     console, buf = make_console()
     gui.info("pick [red] or [blue]", console=console)
     assert "pick [red] or [blue]" in buf.getvalue()
+
+
+def test_status_lines_are_framed() -> None:
+    for fn, prefix in [
+        (gui.info, "[i]"),
+        (gui.step, "[-]"),
+        (gui.success, "[+]"),
+        (gui.warn, "[!]"),
+        (gui.error, "[!]"),
+    ]:
+        console, buf = make_console()
+        fn("hi", console=console)
+        assert buf.getvalue().startswith(f" \u2502  {prefix} hi")
