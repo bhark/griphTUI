@@ -385,3 +385,32 @@ def test_password_validate_rejects_then_accepts(monkeypatch: pytest.MonkeyPatch)
         console=console,
     )
     assert result == "abcd"
+
+
+def test_password_custom_mask_emitted(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, buf = make_console()
+    keys = iter(["a", "b", "c", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    result = gui.password("pw", mask="*", console=console)
+    assert result == "abc"
+    assert buf.getvalue().count("*") == 3
+    assert "·" not in buf.getvalue()
+
+
+def test_password_empty_mask_hides_length(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, buf = make_console()
+    keys = iter(["s", "e", "c", "r", "e", "t", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    result = gui.password("pw", mask="", console=console)
+    assert result == "secret"
+    out = buf.getvalue()
+    assert "·" not in out and "*" not in out
+
+
+def test_password_mask_backspace_erases_full_mask(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, buf = make_console()
+    keys = iter(["a", "b", "backspace", "c", "enter"])
+    monkeypatch.setattr(prompts, "read_key", lambda **_: next(keys))
+    result = gui.password("pw", mask="**", console=console)
+    assert result == "ac"
+    assert buf.getvalue().count("\b \b\b \b") == 1

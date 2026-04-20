@@ -64,6 +64,7 @@ with gtui.spinner("Preparing for ethical dilemmas...") as s:
     s.update("Installing drift capabilities...")
     time.sleep(1)
     s.update("Updating Terms of Use...")
+    time.sleep(1)
     s.done("Drift ready")  # leaves a [+] success line on exit
     # on exception, s.fail("message") leaves a [!] error line instead
 
@@ -86,7 +87,7 @@ There's a bit more available, eg. input validation. See the [example](/examples/
 | `intro(title)` / `outro(msg)` / `section(title)` | frames |
 | `note(message, title=...)` | multi-line block (e.g. a confirmation summary) |
 | `text(label, default="")` | single-line input |
-| `password(label)` | masked input |
+| `password(label, mask="·")` | masked input; `mask=""` hides length entirely |
 | `confirm(label, default=True)` | y/n prompt |
 | `select(label, options)` | single-choice picker |
 | `multiselect(label, options)` | multi-choice picker with optional `requires` / `excludes` rules |

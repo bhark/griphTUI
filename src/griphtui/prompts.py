@@ -78,10 +78,11 @@ def _cancelled(c: Console) -> Cancel:
     return CANCEL
 
 
-def _read_inline_value(c: Console, *, masked: bool = False) -> str | Cancel:
+def _read_inline_value(c: Console, *, mask: str | None = None) -> str | Cancel:
     out = c.file
     # dim bar via raw ansi since we bypass rich for keystroke handling
     bar_prompt = f" \x1b[2m{BAR}\x1b[22m  "
+    erase = "\b \b" * len(mask) if mask is not None else "\b \b"
     chars: list[str] = []
     out.write(bar_prompt)
     out.flush()
@@ -93,12 +94,12 @@ def _read_inline_value(c: Console, *, masked: bool = False) -> str | Cancel:
             if key == "backspace":
                 if chars:
                     chars.pop()
-                    out.write("\b \b")
+                    out.write(erase)
                     out.flush()
                 continue
             if len(key) == 1:
                 chars.append(key)
-                out.write("·" if masked else key)
+                out.write(mask if mask is not None else key)
                 out.flush()
     except KeyboardInterrupt:
         out.write("\n")
@@ -225,8 +226,8 @@ def _conflicting_indexes(
 
 def _multiselect_row_styles(*, active: bool, state: _OptionState) -> tuple[str, str]:
     if state.disabled:
-        glyph_style = "yellow"
-        label_style = "" if active else "dim"
+        glyph_style = f"{ACCENT} dim" if state.selected else "bright_black dim"
+        label_style = "bright_black" if active else "dim"
         return glyph_style, label_style
 
     glyph_style = ACCENT if state.selected else "dim"
@@ -331,13 +332,14 @@ def text(
 def password(
     label: str,
     *,
+    mask: str = "·",
     validate: Validator | None = None,
     console: Console | None = None,
 ) -> str | Cancel:
     c = get_console(console)
     _header(c, DIAMOND, label)
     while True:
-        raw = _read_inline_value(c, masked=True)
+        raw = _read_inline_value(c, mask=mask)
         if is_cancel(raw):
             return raw
         candidate = raw.strip()
