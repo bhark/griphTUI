@@ -5,6 +5,7 @@ import threading
 from types import TracebackType
 
 from ._glyphs import BAR, SPINNER_FRAMES
+from .status import error as _error_line, success as _success_line
 
 _INTERVAL = 0.08
 _CLEAR = "\r\033[K"
@@ -16,10 +17,20 @@ class Spinner:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self._done_message: str | None = None
+        self._fail_message: str | None = None
 
     def update(self, label: str) -> None:
         with self._lock:
             self._label = label
+
+    def done(self, message: str) -> None:
+        with self._lock:
+            self._done_message = message
+
+    def fail(self, message: str) -> None:
+        with self._lock:
+            self._fail_message = message
 
     @property
     def is_running(self) -> bool:
@@ -53,6 +64,12 @@ class Spinner:
         self._stop.set()
         if self._thread is not None:
             self._thread.join()
+        with self._lock:
+            done, fail = self._done_message, self._fail_message
+        if exc_type is not None and fail is not None:
+            _error_line(fail)
+        elif exc_type is None and done is not None:
+            _success_line(done)
 
 
 def spinner(label: str) -> Spinner:

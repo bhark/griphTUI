@@ -64,6 +64,8 @@ with gtui.spinner("Preparing for ethical dilemmas...") as s:
     s.update("Installing drift capabilities...")
     time.sleep(1)
     s.update("Updating Terms of Use...")
+    s.done("Drift ready")  # leaves a [+] success line on exit
+    # on exception, s.fail("message") leaves a [!] error line instead
 
 # status messages
 gtui.warn("Aristoteles disliked this") # info, step, success, warn or error

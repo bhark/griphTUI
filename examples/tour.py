@@ -88,6 +88,7 @@ def main() -> None:
         time.sleep(0.8)
         s.update("Pondering...")
         time.sleep(0.6)
+        s.done("Pondered thoroughly")
 
     gtui.section("That's a wrap")
     gtui.info(f"Hello {name}, with the well-kept {len(token)} chars secret")
