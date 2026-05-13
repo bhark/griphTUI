@@ -31,12 +31,15 @@ def test_spinner_exception_propagates() -> None:
             raise RuntimeError("boom")
 
 
+GLYPH = "✶"
+
+
 def test_spinner_done_renders_success_line(capsys: pytest.CaptureFixture[str]) -> None:
     with gui.spinner("installing") as s:
         s.done("installed")
     out = capsys.readouterr().out
     assert "installed" in out
-    assert "[+]" in out
+    assert GLYPH in out
 
 
 def test_spinner_fail_renders_error_line_on_exception(capsys: pytest.CaptureFixture[str]) -> None:
@@ -46,15 +49,14 @@ def test_spinner_fail_renders_error_line_on_exception(capsys: pytest.CaptureFixt
             raise RuntimeError("boom")
     out = capsys.readouterr().out
     assert "install failed" in out
-    assert "[!]" in out
+    assert GLYPH in out
 
 
 def test_spinner_without_done_message_stays_quiet(capsys: pytest.CaptureFixture[str]) -> None:
     with gui.spinner("working"):
         pass
     out = capsys.readouterr().out
-    assert "[+]" not in out
-    assert "[!]" not in out
+    assert GLYPH not in out
 
 
 def test_spinner_done_ignored_on_exception(capsys: pytest.CaptureFixture[str]) -> None:

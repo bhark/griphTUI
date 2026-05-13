@@ -12,34 +12,37 @@ def make_console() -> tuple[Console, io.StringIO]:
     return Console(file=buf, force_terminal=False, width=80, highlight=False), buf
 
 
+GLYPH = "\u2736"
+
+
 def test_info_renders_prefix() -> None:
     console, buf = make_console()
     gui.info("hello", console=console)
-    assert "[i] hello" in buf.getvalue()
+    assert f"{GLYPH} hello" in buf.getvalue()
 
 
 def test_step_renders_prefix() -> None:
     console, buf = make_console()
     gui.step("hello", console=console)
-    assert "[-] hello" in buf.getvalue()
+    assert f"{GLYPH} hello" in buf.getvalue()
 
 
 def test_success_renders_prefix() -> None:
     console, buf = make_console()
     gui.success("hello", console=console)
-    assert "[+] hello" in buf.getvalue()
+    assert f"{GLYPH} hello" in buf.getvalue()
 
 
 def test_warn_renders_prefix() -> None:
     console, buf = make_console()
     gui.warn("hello", console=console)
-    assert "[!] hello" in buf.getvalue()
+    assert f"{GLYPH} hello" in buf.getvalue()
 
 
 def test_error_renders_prefix() -> None:
     console, buf = make_console()
     gui.error("hello", console=console)
-    assert "[!] hello" in buf.getvalue()
+    assert f"{GLYPH} hello" in buf.getvalue()
 
 
 def test_message_with_brackets_is_not_interpreted_as_markup() -> None:
@@ -49,13 +52,7 @@ def test_message_with_brackets_is_not_interpreted_as_markup() -> None:
 
 
 def test_status_lines_are_framed() -> None:
-    for fn, prefix in [
-        (gui.info, "[i]"),
-        (gui.step, "[-]"),
-        (gui.success, "[+]"),
-        (gui.warn, "[!]"),
-        (gui.error, "[!]"),
-    ]:
+    for fn in (gui.info, gui.step, gui.success, gui.warn, gui.error):
         console, buf = make_console()
         fn("hi", console=console)
-        assert buf.getvalue().startswith(f" \u2502  {prefix} hi")
+        assert buf.getvalue().startswith(f" \u2502  {GLYPH} hi")
