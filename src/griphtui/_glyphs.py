@@ -5,28 +5,19 @@ TOP = "┌"
 BOTTOM = "└"
 BAR = "│"
 
-# prompts
+# glyphs - named for the symbol, reused across contexts
 BULLET = "●"
-DIAMOND = "⬥"
-NOTE = "◇"
+RING = "○"
+BULLSEYE = "◉"
+SQUARE = "◼"
+SQUARE_OUTLINE = "◻"
 SKIP = "⊘"
 
-# selection - radio (single) and check (multi)
-RADIO_ON = "●"
-RADIO_OFF = "○"
-CHECK_ON = "◼"
-CHECK_OFF = "◻"
-
-# spinner
-SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+# spinner - quarter-filled circles, clockwise full rotation
+SPINNER_FRAMES = "◐◓◑◒"
 
 # single accent color for decorators/icons
 ACCENT = "cyan"
 
-# status prefixes - single glyph, color carries the meaning
-STATUS_GLYPH = "✶"
-PREFIX_INFO = STATUS_GLYPH
-PREFIX_STEP = STATUS_GLYPH
-PREFIX_SUCCESS = STATUS_GLYPH
-PREFIX_WARN = STATUS_GLYPH
-PREFIX_ERROR = STATUS_GLYPH
+# body text - slight fade so titles/sections sit above it
+TEXT = "grey70"

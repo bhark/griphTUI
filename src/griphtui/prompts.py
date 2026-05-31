@@ -10,7 +10,7 @@ from rich.markup import escape
 from rich.text import Text
 
 from ._console import bar, get_console
-from ._glyphs import ACCENT, BAR, BULLET, CHECK_OFF, CHECK_ON, DIAMOND, RADIO_OFF, RADIO_ON, SKIP
+from ._glyphs import ACCENT, BAR, BULLET, BULLSEYE, RING, SKIP, SQUARE, SQUARE_OUTLINE, TEXT
 from ._keys import read_key
 
 T = TypeVar("T")
@@ -242,7 +242,7 @@ def _multiselect_row_styles(*, active: bool, state: _OptionState) -> tuple[str, 
         return glyph_style, label_style
 
     glyph_style = ACCENT if state.selected else "dim"
-    label_style = "" if active else "dim"
+    label_style = TEXT if active else "dim"
     return glyph_style, label_style
 
 
@@ -352,7 +352,7 @@ def password(
     console: Console | None = None,
 ) -> str | Cancel:
     c = get_console(console)
-    _header(c, DIAMOND, label)
+    _header(c, BULLSEYE, label)
     while True:
         raw = _read_inline_value(c, mask=mask)
         if is_cancel(raw):
@@ -373,12 +373,12 @@ def confirm(label: str, *, default: bool = True, console: Console | None = None)
     answer = default
 
     def render() -> Group:
-        yes_glyph = RADIO_ON if answer else RADIO_OFF
-        no_glyph = RADIO_OFF if answer else RADIO_ON
+        yes_glyph = BULLET if answer else RING
+        no_glyph = RING if answer else BULLET
         yes_glyph_style = ACCENT if answer else "dim"
         no_glyph_style = "dim" if answer else ACCENT
-        yes_text_style = "" if answer else "dim"
-        no_text_style = "dim" if answer else ""
+        yes_text_style = TEXT if answer else "dim"
+        no_text_style = "dim" if answer else TEXT
         line = Text(" ") + Text(BAR, style="dim") + Text("  ")
         line += Text(yes_glyph, style=yes_glyph_style) + Text(" ")
         line += Text("yes", style=yes_text_style)
@@ -410,7 +410,7 @@ def confirm(label: str, *, default: bool = True, console: Console | None = None)
         return _cancelled(c)
 
     c.print(
-        f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{'yes' if answer else 'no'}[/dim]"
+        f" [dim]{BAR}[/dim]  [{ACCENT}]{BULLET}[/{ACCENT}] [dim]{'yes' if answer else 'no'}[/dim]"
     )
     bar(c)
     return answer
@@ -438,9 +438,9 @@ def select(
             if opt.disabled:
                 glyph, glyph_style, text_style = SKIP, "dim", "dim"
             else:
-                glyph = RADIO_ON if active else RADIO_OFF
+                glyph = BULLET if active else RING
                 glyph_style = ACCENT if active else "dim"
-                text_style = "" if active else "dim"
+                text_style = TEXT if active else "dim"
             line = Text(" ") + Text(BAR, style="dim") + Text("  ")
             line += Text(glyph, style=glyph_style) + Text(" ")
             line += Text(opt.label, style=text_style)
@@ -468,7 +468,7 @@ def select(
         return _cancelled(c)
 
     chosen = opts[cursor]
-    c.print(f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{escape(chosen.label)}[/dim]")
+    c.print(f" [dim]{BAR}[/dim]  [{ACCENT}]{BULLET}[/{ACCENT}] [dim]{escape(chosen.label)}[/dim]")
     bar(c)
     return chosen.value
 
@@ -497,7 +497,7 @@ def multiselect(
             state = states[i]
             active = i == cursor
             is_on = state.selected
-            glyph = CHECK_ON if is_on else CHECK_OFF
+            glyph = SQUARE if is_on else SQUARE_OUTLINE
             glyph_style, text_style = _multiselect_row_styles(active=active, state=state)
             line = Text(" ") + Text(BAR, style="dim") + Text("  ")
             line += Text(glyph, style=glyph_style) + Text(" ")
@@ -533,9 +533,9 @@ def multiselect(
 
     for i, opt in enumerate(opts):
         if selected[i]:
-            glyph_markup = f"[{ACCENT}]{CHECK_ON}[/{ACCENT}]"
+            glyph_markup = f"[{ACCENT}]{SQUARE}[/{ACCENT}]"
         else:
-            glyph_markup = f"[dim]{CHECK_OFF}[/dim]"
+            glyph_markup = f"[dim]{SQUARE_OUTLINE}[/dim]"
         c.print(f" [dim]{BAR}[/dim]  {glyph_markup} [dim]{escape(opt.option.label)}[/dim]")
     bar(c)
 

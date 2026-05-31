@@ -10,6 +10,7 @@ from .status import error, info, step, success, warn
 __all__ = [
     "CANCEL",
     "Cancel",
+    "__version__",
     "Option",
     "Spinner",
     "confirm",

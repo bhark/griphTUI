@@ -12,7 +12,7 @@ def make_console() -> tuple[Console, io.StringIO]:
     return Console(file=buf, force_terminal=False, width=80, highlight=False), buf
 
 
-GLYPH = "\u2736"
+GLYPH = "\u25cf"
 
 
 def test_info_renders_prefix() -> None:

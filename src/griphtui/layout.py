@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from ._console import bar, get_console
-from ._glyphs import ACCENT, BAR, BOTTOM, BULLET, NOTE, TOP
+from ._glyphs import ACCENT, BAR, BOTTOM, BULLET, BULLSEYE, TEXT, TOP
 
 
 def intro(title: str, *, console: Console | None = None) -> None:
@@ -26,7 +26,7 @@ def outro(message: str, *, console: Console | None = None) -> None:
 def section(title: str, *, console: Console | None = None) -> None:
     c = get_console(console)
     bar(c)
-    c.print(f" [{ACCENT}]{BULLET}[/{ACCENT}]  [dim]{escape(title)}[/dim]")
+    c.print(f" [{ACCENT}]{BULLET}[/{ACCENT}]  {escape(title)}")
     bar(c)
 
 
@@ -39,7 +39,7 @@ def note(
     c = get_console(console)
     lines = message.splitlines() if isinstance(message, str) else list(message)
     if title:
-        c.print(f" [{ACCENT}]{NOTE}[/{ACCENT}]  {escape(title)}")
+        c.print(f" [{ACCENT}]{BULLSEYE}[/{ACCENT}]  {escape(title)}")
     for line in lines:
-        c.print(f" [dim]{BAR}[/dim]  {escape(line)}")
+        c.print(f" [dim]{BAR}[/dim]  [{TEXT}]{escape(line)}[/{TEXT}]")
     bar(c)

@@ -31,7 +31,7 @@ def test_spinner_exception_propagates() -> None:
             raise RuntimeError("boom")
 
 
-GLYPH = "✶"
+GLYPH = "●"
 
 
 def test_spinner_done_renders_success_line(capsys: pytest.CaptureFixture[str]) -> None:
