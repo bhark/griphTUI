@@ -56,3 +56,10 @@ def test_status_lines_are_framed() -> None:
         console, buf = make_console()
         fn("hi", console=console)
         assert buf.getvalue().startswith(f" \u2502  {GLYPH} hi")
+
+
+def test_status_lines_self_terminate_with_trailing_bar() -> None:
+    for fn in (gui.info, gui.step, gui.success, gui.warn, gui.error):
+        console, buf = make_console()
+        fn("hi", console=console)
+        assert buf.getvalue().splitlines()[-1].rstrip() == " \u2502"

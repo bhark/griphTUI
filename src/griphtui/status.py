@@ -9,6 +9,7 @@ from ._glyphs import BAR, PREFIX_ERROR, PREFIX_INFO, PREFIX_STEP, PREFIX_SUCCESS
 
 def _line(c: Console, color: str, prefix: str, message: str) -> None:
     c.print(f" [dim]{BAR}[/dim]  [{color}]{escape(prefix)}[/{color}] {escape(message)}")
+    c.print(f" [dim]{BAR}[/dim]")
 
 
 def info(message: str, *, console: Console | None = None) -> None:
