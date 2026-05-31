@@ -3,13 +3,13 @@ from __future__ import annotations
 from rich.console import Console
 from rich.markup import escape
 
-from ._console import get_console
+from ._console import bar, get_console
 from ._glyphs import BAR, PREFIX_ERROR, PREFIX_INFO, PREFIX_STEP, PREFIX_SUCCESS, PREFIX_WARN
 
 
 def _line(c: Console, color: str, prefix: str, message: str) -> None:
     c.print(f" [dim]{BAR}[/dim]  [{color}]{escape(prefix)}[/{color}] {escape(message)}")
-    c.print(f" [dim]{BAR}[/dim]")
+    bar(c)
 
 
 def info(message: str, *, console: Console | None = None) -> None:

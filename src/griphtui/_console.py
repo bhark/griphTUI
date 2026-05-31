@@ -6,6 +6,8 @@ import sys
 
 from rich.console import Console
 
+from ._glyphs import BAR
+
 _instance: Console | None = None
 _margin_active = False
 
@@ -18,6 +20,10 @@ def get_console(override: Console | None = None) -> Console:
         _instance = Console(highlight=False, soft_wrap=False)
         _reserve_bottom_margin()
     return _instance
+
+
+def bar(c: Console) -> None:
+    c.print(f" [dim]{BAR}[/dim]")
 
 
 def _reserve_bottom_margin() -> None:

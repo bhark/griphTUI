@@ -9,7 +9,7 @@ from rich.live import Live
 from rich.markup import escape
 from rich.text import Text
 
-from ._console import get_console
+from ._console import bar, get_console
 from ._glyphs import ACCENT, BAR, BULLET, CHECK_OFF, CHECK_ON, DIAMOND, RADIO_OFF, RADIO_ON, SKIP
 from ._keys import read_key
 
@@ -74,10 +74,6 @@ def _to_option(raw: SelectOption[T] | MultiOption[T]) -> Option[T]:
     return Option(label=label, value=value, selected=selected)
 
 
-def _spacer(c: Console) -> None:
-    c.print(f" [dim]{BAR}[/dim]")
-
-
 def _header(c: Console, glyph: str, label: str, hint: str = "") -> None:
     suffix = f"  [dim]({hint})[/dim]" if hint else ""
     c.print(f" [{ACCENT}]{glyph}[/{ACCENT}]  {escape(label)}{suffix}")
@@ -89,7 +85,7 @@ def _error_line(c: Console, message: str) -> None:
 
 def _cancelled(c: Console) -> Cancel:
     c.print(f" [dim]{BAR}[/dim]  [yellow]cancelled[/yellow]")
-    _spacer(c)
+    bar(c)
     return CANCEL
 
 
@@ -344,7 +340,7 @@ def text(
             if err:
                 _error_line(c, err)
                 continue
-        _spacer(c)
+        bar(c)
         return candidate
 
 
@@ -367,7 +363,7 @@ def password(
             if err:
                 _error_line(c, err)
                 continue
-        _spacer(c)
+        bar(c)
         return candidate
 
 
@@ -416,7 +412,7 @@ def confirm(label: str, *, default: bool = True, console: Console | None = None)
     c.print(
         f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{'yes' if answer else 'no'}[/dim]"
     )
-    _spacer(c)
+    bar(c)
     return answer
 
 
@@ -473,7 +469,7 @@ def select(
 
     chosen = opts[cursor]
     c.print(f" [dim]{BAR}[/dim]  [{ACCENT}]{RADIO_ON}[/{ACCENT}] [dim]{escape(chosen.label)}[/dim]")
-    _spacer(c)
+    bar(c)
     return chosen.value
 
 
@@ -541,6 +537,6 @@ def multiselect(
         else:
             glyph_markup = f"[dim]{CHECK_OFF}[/dim]"
         c.print(f" [dim]{BAR}[/dim]  {glyph_markup} [dim]{escape(opt.option.label)}[/dim]")
-    _spacer(c)
+    bar(c)
 
     return [opt.option.value for opt, sel in zip(opts, selected) if sel]
