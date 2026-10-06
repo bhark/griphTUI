@@ -79,6 +79,11 @@ def _header(c: Console, glyph: str, label: str, hint: str = "") -> None:
     c.print(f" [{ACCENT}]{glyph}[/{ACCENT}]  {escape(label)}{suffix}")
 
 
+def _description(c: Console, description: str | None) -> None:
+    if description:
+        c.print(f" [dim]{BAR}  {escape(description)}[/dim]")
+
+
 def _error_line(c: Console, message: str) -> None:
     c.print(f" [red]{BAR}[/red]  [red]{escape(message)}[/red]")
 
@@ -323,11 +328,13 @@ def text(
     *,
     default: str = "",
     validate: Validator | None = None,
+    description: str | None = None,
     console: Console | None = None,
 ) -> str | Cancel:
     c = get_console(console)
     hint = escape(default) if default else ""
     _header(c, BULLET, label, hint)
+    _description(c, description)
     while True:
         raw = _read_inline_value(c)
         if is_cancel(raw):
@@ -349,10 +356,12 @@ def password(
     *,
     mask: str = "·",
     validate: Validator | None = None,
+    description: str | None = None,
     console: Console | None = None,
 ) -> str | Cancel:
     c = get_console(console)
     _header(c, BULLSEYE, label)
+    _description(c, description)
     while True:
         raw = _read_inline_value(c, mask=mask)
         if is_cancel(raw):
@@ -367,9 +376,16 @@ def password(
         return candidate
 
 
-def confirm(label: str, *, default: bool = True, console: Console | None = None) -> bool | Cancel:
+def confirm(
+    label: str,
+    *,
+    default: bool = True,
+    description: str | None = None,
+    console: Console | None = None,
+) -> bool | Cancel:
     c = get_console(console)
     _header(c, BULLET, label)
+    _description(c, description)
     answer = default
 
     def render() -> Group:
@@ -420,6 +436,7 @@ def select(
     label: str,
     options: Sequence[SelectOption[T]],
     *,
+    description: str | None = None,
     console: Console | None = None,
 ) -> T | Cancel:
     if not options:
@@ -452,6 +469,7 @@ def select(
         return Group(*items)
 
     _header(c, BULLET, label)
+    _description(c, description)
 
     try:
         with Live(render(), console=c, transient=True, auto_refresh=False) as live:
@@ -477,6 +495,7 @@ def multiselect(
     label: str,
     options: Sequence[MultiOption[T]],
     *,
+    description: str | None = None,
     console: Console | None = None,
 ) -> list[T] | Cancel:
     if not options:
@@ -512,6 +531,7 @@ def multiselect(
         return Group(*items)
 
     _header(c, BULLET, label, "space toggle, enter confirm")
+    _description(c, description)
 
     try:
         with Live(render(), console=c, transient=True, auto_refresh=False) as live:

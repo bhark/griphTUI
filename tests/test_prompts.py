@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Never
 
 import pytest
@@ -9,6 +9,7 @@ from rich.console import Console
 
 import griphtui as gui
 from griphtui import prompts
+from griphtui._glyphs import BAR, BULLET
 
 
 def make_console() -> tuple[Console, io.StringIO]:
@@ -481,3 +482,39 @@ def test_password_mask_backspace_erases_full_mask(monkeypatch: pytest.MonkeyPatc
     result = gui.password("pw", mask="**", console=console)
     assert result == "ac"
     assert buf.getvalue().count("\b \b\b \b") == 1
+
+
+@pytest.mark.parametrize(
+    "ask",
+    [
+        lambda **kw: gui.text("label", **kw),
+        lambda **kw: gui.password("label", **kw),
+        lambda **kw: gui.confirm("label", **kw),
+        lambda **kw: gui.select("label", [("A", "a")], **kw),
+        lambda **kw: gui.multiselect("label", [("A", "a")], **kw),
+    ],
+    ids=["text", "password", "confirm", "select", "multiselect"],
+)
+def test_description_renders_below_label(
+    monkeypatch: pytest.MonkeyPatch, ask: Callable[..., object]
+) -> None:
+    console, buf = make_console()
+    monkeypatch.setattr(prompts, "read_key", lambda **_: "enter")
+    ask(description="what it means", console=console)
+    lines = buf.getvalue().splitlines()
+    assert "label" in lines[0]
+    assert lines[1] == f" {BAR}  what it means"
+
+
+def test_confirm_without_description_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, buf = make_console()
+    monkeypatch.setattr(prompts, "read_key", lambda **_: "y")
+    gui.confirm("go?", console=console)
+    assert buf.getvalue().splitlines()[1] == f" {BAR}  {BULLET} yes"
+
+
+def test_description_markup_is_escaped(monkeypatch: pytest.MonkeyPatch) -> None:
+    console, buf = make_console()
+    monkeypatch.setattr(prompts, "read_key", lambda **_: "y")
+    gui.confirm("go?", description="[bold]x[/bold]", console=console)
+    assert buf.getvalue().splitlines()[1] == f" {BAR}  [bold]x[/bold]"
