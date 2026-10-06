@@ -94,7 +94,7 @@ There's a bit more available, eg. input validation. See the [example](/examples/
 | `spinner(label)` | threaded spinner context manager; `.done()` / `.fail()` leave a final status line |
 | `info` / `step` / `success` / `warn` / `error` | prefixed status lines |
 
-All prompts accept an optional `console=` kwarg if you want to inject your own Rich `Console`.
+All prompts accept an optional `console=` kwarg if you want to inject your own Rich `Console`, and an optional `description=` that prints a dim line under the label.
 
 When `multiselect()` rules are used, referenced option values must be unique.
 
